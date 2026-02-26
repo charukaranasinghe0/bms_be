@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  TEMP
+  OTHER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Role {
+  roleId      Int     @id @default(autoincrement()) @map("role_id")
+  roleName    String  @unique @map("role_name")
+  description String? @map("description")
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  userId         Int            @id @default(autoincrement()) @map("user_id")
+  roleId         Int            @map("role_id")
+  username       String         @unique @map("username")
+  passwordHash   String         @map("password_hash")
+  fullName       String         @map("full_name")
+  contactNumber  String?        @map("contact_number")
+  email          String         @unique @map("email")
+  employmentType EmploymentType @map("employment_type")
+  status         UserStatus     @map("status")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  role           Role           @relation(fields: [roleId], references: [roleId])
+  refreshTokens  RefreshToken[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     Int      @map("user_id")
+  tokenHash  String   @map("token_hash")
+  revoked    Boolean  @default(false) @map("revoked")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
