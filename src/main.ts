@@ -15,7 +15,13 @@ async function bootstrap() {
   app.use(helmet());
   app.use(morgan('dev'));
 
-  app.enableCors();
+  const frontendOrigin =
+    configService.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:3000';
+
+  app.enableCors({
+    origin: frontendOrigin,
+    credentials: true,
+  });
 
   // Match Express: /health is NOT under /api, but other routes are
   app.setGlobalPrefix('api', {
