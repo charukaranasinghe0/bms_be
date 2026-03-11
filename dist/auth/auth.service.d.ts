@@ -21,9 +21,9 @@ export declare class AuthService {
         refreshToken: string;
     }>;
     validateUser(username: string, password: string): Promise<{
-        id: string;
         username: string;
         password: string;
+        id: string;
         role: string;
         createdAt: Date;
         updatedAt: Date;

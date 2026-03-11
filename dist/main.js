@@ -11,18 +11,22 @@ const morgan_1 = __importDefault(require("morgan"));
 const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter");
 const config_1 = require("@nestjs/config");
 async function bootstrap() {
-    var _a;
+    var _a, _b;
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
     app.use((0, cookie_parser_1.default)());
     app.use((0, helmet_1.default)());
     app.use((0, morgan_1.default)('dev'));
-    app.enableCors();
+    const frontendOrigin = (_a = configService.get('FRONTEND_ORIGIN')) !== null && _a !== void 0 ? _a : 'http://localhost:3000';
+    app.enableCors({
+        origin: frontendOrigin,
+        credentials: true,
+    });
     app.setGlobalPrefix('api', {
         exclude: ['health'],
     });
     app.useGlobalFilters(new all_exceptions_filter_1.AllExceptionsFilter(configService));
-    const port = (_a = app.get(config_1.ConfigService).get('PORT')) !== null && _a !== void 0 ? _a : 4000;
+    const port = (_b = app.get(config_1.ConfigService).get('PORT')) !== null && _b !== void 0 ? _b : 4000;
     await app.listen(port);
 }
 bootstrap();
