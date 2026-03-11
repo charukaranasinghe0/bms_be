@@ -21,11 +21,11 @@ export declare class AuthService {
         refreshToken: string;
     }>;
     validateUser(username: string, password: string): Promise<{
+        id: string;
+        createdAt: Date;
         username: string;
         password: string;
-        id: string;
         role: string;
-        createdAt: Date;
         updatedAt: Date;
     } | null>;
     login(dto: LoginDto): Promise<{
