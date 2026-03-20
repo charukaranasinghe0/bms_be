@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "POS API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:4000/api" },
+    { "key": "token",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth — Login (get token)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/auth/login",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"cashier\",\n  \"password\": \"cashier123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "POS — Customer Lookup (found)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/pos/customer?phone=0501234567",
+          "host": ["{{base_url}}"],
+          "path": ["pos", "customer"],
+          "query": [{ "key": "phone", "value": "0501234567" }]
+        },
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "POS — Customer Lookup (not found)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/pos/customer?phone=0000000000",
+          "host": ["{{base_url}}"],
+          "path": ["pos", "customer"],
+          "query": [{ "key": "phone", "value": "0000000000" }]
+        },
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "POS — Get Products",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/pos/products",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "POS — Get Chefs",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/pos/chefs",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "POS — Create Order (CASH, available products)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/pos/orders",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",  "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"<customer-uuid>\",\n  \"items\": [\n    { \"productId\": \"<product-uuid>\", \"quantity\": 2 },\n    { \"productId\": \"<product-uuid-2>\", \"quantity\": 1 }\n  ],\n  \"discount\": 10,\n  \"paymentMethod\": \"CASH\"\n}"
+        }
+      }
+    },
+    {
+      "name": "POS — Create Order (CARD, unavailable product with chef)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/pos/orders",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",  "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"<customer-uuid>\",\n  \"items\": [\n    {\n      \"productId\": \"<unavailable-product-uuid>\",\n      \"quantity\": 1,\n      \"assignedChefId\": \"<chef-uuid>\"\n    }\n  ],\n  \"discount\": 0,\n  \"paymentMethod\": \"CARD\"\n}"
+        }
+      }
+    },
+    {
+      "name": "POS — Create Order (422 — unavailable product, no chef)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/pos/orders",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",  "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"<customer-uuid>\",\n  \"items\": [\n    { \"productId\": \"<unavailable-product-uuid>\", \"quantity\": 1 }\n  ],\n  \"discount\": 0,\n  \"paymentMethod\": \"CASH\"\n}"
+        }
+      }
+    }
+  ]
+}
