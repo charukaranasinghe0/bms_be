@@ -35,8 +35,49 @@ model Customer {
   email     String?  @unique @map("email")
   phone     String   @unique @map("phone")
   createdAt DateTime @default(now()) @map("createdat")
+  orders    Order[]
 
   @@index([phone])
   @@map("customer")
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  name        String
+  price       Float
+  isAvailable Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  orderItems  OrderItem[]
+}
+
+model Chef {
+  id     String @id @default(uuid())
+  name   String
+  status String @default("AVAILABLE") // AVAILABLE | BUSY
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  customerId    String
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  subtotal      Float
+  discount      Float       @default(0)
+  total         Float
+  paymentMethod String      // CASH | CARD
+  status        String      @default("PAID")
+  txRef         String?     // simulated card transaction reference
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  quantity       Int
+  price          Float   // snapshot of product price at time of order
+  assignedChefId String? // optional, no assignment logic — stored only
 }
 
