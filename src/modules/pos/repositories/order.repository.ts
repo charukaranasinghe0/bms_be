@@ -21,6 +21,16 @@ export interface CreateOrderInput {
 export class OrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string) {
+    return this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: { select: { name: true } } } },
+        customer: { select: { id: true, name: true, phone: true, email: true } },
+      },
+    });
+  }
+
   async create(input: CreateOrderInput) {
     return this.prisma.order.create({
       data: {
@@ -41,8 +51,8 @@ export class OrderRepository {
         },
       },
       include: {
-        items: true,
-        customer: { select: { id: true, name: true, phone: true } },
+        items: { include: { product: { select: { name: true } } } },
+        customer: { select: { id: true, name: true, phone: true, email: true } },
       },
     });
   }
