@@ -106,6 +106,14 @@
           "raw": "{\n  \"customerId\": \"<customer-uuid>\",\n  \"items\": [\n    { \"productId\": \"<unavailable-product-uuid>\", \"quantity\": 1 }\n  ],\n  \"discount\": 0,\n  \"paymentMethod\": \"CASH\"\n}"
         }
       }
+    },
+    {
+      "name": "POS — Download Bill (PDF)",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/pos/orders/<order-uuid>/bill",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
     }
   ]
 }
