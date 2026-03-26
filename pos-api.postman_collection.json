@@ -114,6 +114,148 @@
         "url": "{{base_url}}/pos/orders/<order-uuid>/bill",
         "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
       }
+    },
+    {
+      "name": "Products — List All",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/products",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Products — List Available Only",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/products?available=true",
+          "host": ["{{base_url}}"],
+          "path": ["products"],
+          "query": [{ "key": "available", "value": "true" }]
+        },
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Products — Get By ID",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/products/<product-uuid>",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Products — Create (ADMIN)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/products",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"New Pastry\",\n  \"price\": 4.50,\n  \"isAvailable\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Products — Update (ADMIN)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/products/<product-uuid>",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 5.00,\n  \"isAvailable\": true\n}"
+        }
+      }
+    },
+    {
+      "name": "Products — Toggle Availability (ADMIN)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/products/<product-uuid>/toggle",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Products — Delete (ADMIN)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/products/<product-uuid>",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Chefs — List All",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/chefs",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Chefs — List Available Only",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/chefs?available=true",
+          "host": ["{{base_url}}"],
+          "path": ["chefs"],
+          "query": [{ "key": "available", "value": "true" }]
+        },
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Chefs — Get By ID",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/chefs/<chef-uuid>",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
+    },
+    {
+      "name": "Chefs — Create (ADMIN)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/chefs",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Chef New\",\n  \"status\": \"AVAILABLE\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Chefs — Set Status (ADMIN)",
+      "request": {
+        "method": "PATCH",
+        "url": "{{base_url}}/chefs/<chef-uuid>/status",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"AVAILABLE\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Chefs — Delete (ADMIN)",
+      "request": {
+        "method": "DELETE",
+        "url": "{{base_url}}/chefs/<chef-uuid>",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+      }
     }
   ]
 }
