@@ -7,9 +7,11 @@ import { PosCustomerRepository } from './repositories/customer.repository';
 import { ProductRepository } from './repositories/product.repository';
 import { OrderRepository } from './repositories/order.repository';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ProductsModule } from '../products/products.module';
+import { ChefsModule } from '../chefs/chefs.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ProductsModule, ChefsModule],
   controllers: [PosController],
   providers: [
     PosService,
