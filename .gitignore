@@ -24,3 +24,4 @@ Thumbs.db
 # Prisma
 prisma/migrations/dev.db
 prisma/migrations/dev.db-journal
+node_modules

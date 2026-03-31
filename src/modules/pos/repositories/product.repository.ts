@@ -16,4 +16,13 @@ export class ProductRepository {
   async findManyByIds(ids: string[]) {
     return this.prisma.product.findMany({ where: { id: { in: ids } } });
   }
+
+  async create(data: {
+    name: string;
+    price: number;
+    imageUrl?: string;
+    isAvailable?: boolean;
+  }) {
+    return this.prisma.product.create({ data });
+  }
 }
