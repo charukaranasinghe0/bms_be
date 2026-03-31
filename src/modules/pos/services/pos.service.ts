@@ -8,6 +8,7 @@ import { PosCustomerRepository } from '../repositories/customer.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { OrderRepository } from '../repositories/order.repository';
 import { ChefsService } from '../../chefs/chefs.service';
+import { NotificationService } from './notification.service';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,6 +20,7 @@ export class PosService {
     private readonly productRepo: ProductRepository,
     private readonly orderRepo: OrderRepository,
     private readonly chefsService: ChefsService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
@@ -45,18 +47,123 @@ export class PosService {
       name: p.name,
       price: p.price,
       imageUrl: p.imageUrl ?? null,
-      availability: p.isAvailable,
+      isAvailable: p.isAvailable,
+      requiresCooking: p.requiresCooking,
+      cookCategory: p.cookCategory ?? null,
+      // POS UI hint: unavailable products can be ordered with a chef assigned
       ...(p.isAvailable ? {} : { canAssignToChef: true }),
     }));
-  }
-
-  async createProduct(data: { name: string; price: number; imageUrl?: string; isAvailable?: boolean }) {
-    return this.productRepo.create(data);
   }
 
   // ── Chef list (read-only) ──────────────────────────────────────────────────
   async getChefs() {
     return this.chefsService.listAvailable();
+  }
+
+  // ── Chef order management ──────────────────────────────────────────────────
+
+  async getPendingChefOrders() {
+    // Returns items still being cooked (chef hasn't marked done yet)
+    return this.prisma.chefOrder.findMany({
+      where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      include: {
+        product: { select: { name: true, cookCategory: true } },
+        order: {
+          select: {
+            id: true,
+            createdAt: true,
+            customer: { select: { name: true, phone: true } },
+          },
+        },
+        orderItem: { select: { quantity: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getReadyChefOrders() {
+    // Returns items chef has marked as cooked — waiting for cashier to acknowledge
+    return this.prisma.chefOrder.findMany({
+      where: { status: 'DONE' },
+      include: {
+        product: { select: { name: true, cookCategory: true } },
+        order: {
+          select: {
+            id: true,
+            createdAt: true,
+            customer: { select: { name: true, phone: true } },
+          },
+        },
+        orderItem: { select: { quantity: true } },
+      },
+      orderBy: { completedAt: 'asc' },
+    });
+  }
+
+  // Chef marks item as cooked → status becomes DONE → POS sees it as "Ready"
+  async markChefOrderCooked(chefOrderId: string) {
+    const chefOrder = await this.prisma.chefOrder.findUnique({
+      where: { id: chefOrderId },
+    });
+    if (!chefOrder) throw new NotFoundException('Chef order not found');
+
+    return this.prisma.chefOrder.update({
+      where: { id: chefOrderId },
+      data: { status: 'DONE', completedAt: new Date() },
+      include: {
+        product: { select: { name: true } },
+        order: { select: { id: true } },
+      },
+    });
+  }
+
+  // Cashier acknowledges ready item → removes from notification → chef becomes AVAILABLE
+  async completeChefOrder(chefOrderId: string) {
+    const chefOrder = await this.prisma.chefOrder.findUnique({
+      where: { id: chefOrderId },
+      include: {
+        order: {
+          include: {
+            chefOrders: true,
+            customer: { select: { name: true, phone: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!chefOrder) throw new NotFoundException('Chef order not found');
+
+    // Set chef back to AVAILABLE
+    const orderItem = await this.prisma.orderItem.findUnique({
+      where: { id: chefOrder.orderItemId },
+      select: { assignedChefId: true },
+    });
+
+    if (orderItem?.assignedChefId) {
+      await this.prisma.chef.update({
+        where: { id: orderItem.assignedChefId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
+
+    // Check if ALL chef orders for this order are DONE
+    const allDone = chefOrder.order.chefOrders.every(
+      (co) => co.id === chefOrderId || co.status === 'DONE',
+    );
+
+    // Send customer notification if all items ready
+    if (allDone) {
+      void this.notificationService.sendReadyNotification({
+        customer: chefOrder.order.customer,
+        orderId: chefOrder.orderId,
+      });
+    }
+
+    // Mark as acknowledged by deleting or keeping with a new status
+    // We delete it so it disappears from the notification bar
+    await this.prisma.chefOrder.delete({ where: { id: chefOrderId } });
+
+    return { acknowledged: true, chefOrderId };
   }
 
   // ── Order creation ─────────────────────────────────────────────────────────
@@ -128,7 +235,7 @@ export class PosService {
         ? `TXN-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`
         : undefined;
 
-    // 7. Persist order
+    // 7. Persist order + ChefOrder records for assigned items
     const order = await this.orderRepo.create({
       customerId: dto.customerId,
       subtotal: parseFloat(subtotal.toFixed(2)),
@@ -139,6 +246,32 @@ export class PosService {
       txRef,
       items: resolvedItems,
     });
+
+    // Create ChefOrder entries for items that have a chef assigned
+    const chefOrderItems = order.items.filter(
+      (item) => (item as { assignedChefId?: string }).assignedChefId,
+    );
+
+    if (chefOrderItems.length > 0) {
+      const productMap2 = new Map(
+        (await this.productRepo.findManyByIds(
+          chefOrderItems.map((i) => i.productId),
+        )).map((p) => [p.id, p]),
+      );
+
+      await this.prisma.chefOrder.createMany({
+        data: chefOrderItems.map((item) => {
+          const product = productMap2.get(item.productId);
+          return {
+            orderId: order.id,
+            orderItemId: item.id,
+            productId: item.productId,
+            cookCategory: product?.cookCategory ?? 'PASTRY',
+            status: 'PENDING' as const,
+          };
+        }),
+      });
+    }
 
     return order;
   }

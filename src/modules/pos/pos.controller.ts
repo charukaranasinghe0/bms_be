@@ -5,19 +5,12 @@ import {
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { z } from 'zod';
-
-const CreateProductSchema = z.object({
-  name: z.string().min(1),
-  price: z.number().positive(),
-  imageUrl: z.string().url().optional(),
-  isAvailable: z.boolean().optional(),
-});
 import type { Response } from 'express';
 import { PosService } from './services/pos.service';
 import { BillService } from './services/bill.service';
@@ -71,19 +64,6 @@ export class PosController {
     return posResponse(products);
   }
 
-  // POST /api/pos/products  — admin only
-  @Post('products')
-  @Roles('ADMIN')
-  async createProduct(@Body() body: unknown) {
-    const parsed = CreateProductSchema.safeParse(body);
-    if (!parsed.success) {
-      const errors = parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
-      throw new BadRequestException(posError('Validation failed', errors));
-    }
-    const product = await this.posService.createProduct(parsed.data);
-    return posResponse(product, 'Product created successfully');
-  }
-
   // GET /api/pos/chefs
   @Get('chefs')
   async getChefs() {
@@ -96,6 +76,34 @@ export class PosController {
   async getOrders() {
     const orders = await this.orderRepo.findAll();
     return posResponse(orders);
+  }
+
+  // GET /api/pos/chef-orders/pending — items being cooked
+  @Get('chef-orders/pending')
+  async getPendingChefOrders() {
+    const items = await this.posService.getPendingChefOrders();
+    return posResponse(items);
+  }
+
+  // GET /api/pos/chef-orders/ready — items chef marked as cooked, waiting for cashier
+  @Get('chef-orders/ready')
+  async getReadyChefOrders() {
+    const items = await this.posService.getReadyChefOrders();
+    return posResponse(items);
+  }
+
+  // PATCH /api/pos/chef-orders/:id/cooked — chef marks item as cooked
+  @Patch('chef-orders/:id/cooked')
+  async markCooked(@Param('id') id: string) {
+    const result = await this.posService.markChefOrderCooked(id);
+    return posResponse(result, 'Item marked as cooked');
+  }
+
+  // PATCH /api/pos/chef-orders/:id/complete — cashier acknowledges ready item
+  @Patch('chef-orders/:id/complete')
+  async completeChefOrder(@Param('id') id: string) {
+    const result = await this.posService.completeChefOrder(id);
+    return posResponse(result, 'Item acknowledged — chef is now available');
   }
 
   // POST /api/pos/orders

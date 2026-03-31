@@ -6,7 +6,9 @@ export class ProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAllAvailable() {
-    return this.prisma.product.findMany();
+    return this.prisma.product.findMany({
+      orderBy: { name: 'asc' },
+    });
   }
 
   async findById(id: string) {
@@ -15,14 +17,5 @@ export class ProductRepository {
 
   async findManyByIds(ids: string[]) {
     return this.prisma.product.findMany({ where: { id: { in: ids } } });
-  }
-
-  async create(data: {
-    name: string;
-    price: number;
-    imageUrl?: string;
-    isAvailable?: boolean;
-  }) {
-    return this.prisma.product.create({ data });
   }
 }

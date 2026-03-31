@@ -29,22 +29,27 @@ async function main() {
 
   // ── Seed: Products (10 items, mix of available/unavailable) ───────────────
   const products = [
-    { name: 'Croissant',          price: 3.50,  isAvailable: true  },
-    { name: 'Sourdough Loaf',     price: 8.00,  isAvailable: true  },
-    { name: 'Chocolate Éclair',   price: 4.25,  isAvailable: true  },
-    { name: 'Cinnamon Roll',      price: 3.75,  isAvailable: true  },
-    { name: 'Blueberry Muffin',   price: 2.99,  isAvailable: true  },
-    { name: 'Baguette',           price: 2.50,  isAvailable: true  },
-    { name: 'Almond Danish',      price: 4.00,  isAvailable: true  },
-    { name: 'Cheese Brioche',     price: 5.50,  isAvailable: false },
-    { name: 'Walnut Tart',        price: 6.00,  isAvailable: false },
-    { name: 'Seasonal Cake Slice',price: 7.50,  isAvailable: false },
+    { name: 'Croissant',           price: 3.50,  isAvailable: true,  requiresCooking: false, cookCategory: null,        imageUrl: null },
+    { name: 'Sourdough Loaf',      price: 8.00,  isAvailable: true,  requiresCooking: true,  cookCategory: 'BREAD',     imageUrl: null },
+    { name: 'Chocolate Éclair',    price: 4.25,  isAvailable: true,  requiresCooking: true,  cookCategory: 'PASTRY',    imageUrl: null },
+    { name: 'Cinnamon Roll',       price: 3.75,  isAvailable: true,  requiresCooking: true,  cookCategory: 'PASTRY',    imageUrl: null },
+    { name: 'Blueberry Muffin',    price: 2.99,  isAvailable: true,  requiresCooking: false, cookCategory: null,        imageUrl: null },
+    { name: 'Baguette',            price: 2.50,  isAvailable: true,  requiresCooking: true,  cookCategory: 'BREAD',     imageUrl: null },
+    { name: 'Almond Danish',       price: 4.00,  isAvailable: true,  requiresCooking: true,  cookCategory: 'PASTRY',    imageUrl: null },
+    { name: 'Cheese Brioche',      price: 5.50,  isAvailable: false, requiresCooking: true,  cookCategory: 'BREAD',     imageUrl: null },
+    { name: 'Walnut Tart',         price: 6.00,  isAvailable: false, requiresCooking: true,  cookCategory: 'PASTRY',    imageUrl: null },
+    { name: 'Seasonal Cake Slice', price: 7.50,  isAvailable: false, requiresCooking: true,  cookCategory: 'PASTRY',    imageUrl: null },
   ];
 
   for (const p of products) {
     const existing = await prisma.product.findFirst({ where: { name: p.name } });
     if (!existing) {
-      await prisma.product.create({ data: p });
+      await prisma.product.create({ data: p as any });
+    } else {
+      await prisma.product.update({
+        where: { id: existing.id },
+        data: { requiresCooking: p.requiresCooking, cookCategory: p.cookCategory as any },
+      });
     }
   }
 

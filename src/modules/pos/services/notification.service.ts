@@ -21,11 +21,83 @@ export class NotificationService {
   async sendOrderNotifications(data: OrderNotificationData): Promise<void> {
     const { customer, orderId, total, paymentMethod, pdfBuffer } = data;
 
-    // Run email + SMS in parallel; failures are logged but never throw
     await Promise.allSettled([
       this.sendEmail(customer, orderId, total, paymentMethod, pdfBuffer),
       this.sendSms(customer, orderId, total),
     ]);
+  }
+
+  // ── Ready notification (all chef items cooked) ─────────────────────────────
+  async sendReadyNotification(data: {
+    customer: { name: string; phone: string; email?: string | null };
+    orderId: string;
+  }): Promise<void> {
+    const { customer, orderId } = data;
+    const shortId = orderId.slice(0, 8).toUpperCase();
+
+    await Promise.allSettled([
+      this.sendReadyEmail(customer, shortId),
+      this.sendReadySms(customer, shortId),
+    ]);
+  }
+
+  private async sendReadyEmail(
+    customer: { name: string; email?: string | null },
+    shortId: string,
+  ): Promise<void> {
+    if (!customer.email) return;
+
+    const host = this.config.get<string>('SMTP_HOST');
+    const port = Number(this.config.get<string>('SMTP_PORT') ?? '587');
+    const user = this.config.get<string>('SMTP_USER');
+    const pass = this.config.get<string>('SMTP_PASS');
+    const from = this.config.get<string>('SMTP_FROM') ?? user;
+
+    if (!host || !user || !pass) {
+      this.logger.warn('SMTP not configured — skipping ready email');
+      return;
+    }
+
+    const transporter = nodemailer.createTransport({
+      host, port, secure: port === 465, auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from: `"Bakery POS" <${from}>`,
+      to: customer.email,
+      subject: `Your order #${shortId} is ready! 🎉`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:24px;border:1px solid #eee;border-radius:8px">
+          <h2 style="color:#d97706">Your order is ready!</h2>
+          <p>Hi <strong>${customer.name}</strong>,</p>
+          <p>Great news — all items in your order <strong>#${shortId}</strong> have been prepared and are ready for you.</p>
+          <p style="font-size:12px;color:#aaa">Thank you for choosing Bakery POS.</p>
+        </div>
+      `,
+    });
+
+    this.logger.log(`Ready email sent to ${customer.email} for order #${shortId}`);
+  }
+
+  private async sendReadySms(
+    customer: { name: string; phone: string },
+    shortId: string,
+  ): Promise<void> {
+    const accountSid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const authToken  = this.config.get<string>('TWILIO_AUTH_TOKEN');
+    const fromNumber = this.config.get<string>('TWILIO_FROM_NUMBER');
+
+    if (!accountSid || !authToken || !fromNumber) {
+      this.logger.warn('Twilio not configured — skipping ready SMS');
+      return;
+    }
+
+    const client = twilio(accountSid, authToken);
+    const toNumber = customer.phone.startsWith('+') ? customer.phone : `+${customer.phone}`;
+    const body = `Hi ${customer.name}, your Bakery order #${shortId} is ready! Please collect it. 🎉`;
+
+    await client.messages.create({ body, from: fromNumber, to: toNumber });
+    this.logger.log(`Ready SMS sent to ${toNumber} for order #${shortId}`);
   }
 
   // ── Email ──────────────────────────────────────────────────────────────────
