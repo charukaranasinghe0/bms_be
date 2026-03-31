@@ -44,12 +44,17 @@ export class PosService {
       id: p.id,
       name: p.name,
       price: p.price,
+      imageUrl: p.imageUrl ?? null,
       availability: p.isAvailable,
       ...(p.isAvailable ? {} : { canAssignToChef: true }),
     }));
   }
 
-  // ── Chef list (read-only, available only for POS UI) ──────────────────────
+  async createProduct(data: { name: string; price: number; imageUrl?: string; isAvailable?: boolean }) {
+    return this.productRepo.create(data);
+  }
+
+  // ── Chef list (read-only) ──────────────────────────────────────────────────
   async getChefs() {
     return this.chefsService.listAvailable();
   }

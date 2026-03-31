@@ -10,6 +10,14 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { z } from 'zod';
+
+const CreateProductSchema = z.object({
+  name: z.string().min(1),
+  price: z.number().positive(),
+  imageUrl: z.string().url().optional(),
+  isAvailable: z.boolean().optional(),
+});
 import type { Response } from 'express';
 import { PosService } from './services/pos.service';
 import { BillService } from './services/bill.service';
@@ -61,6 +69,19 @@ export class PosController {
   async getProducts() {
     const products = await this.posService.getProducts();
     return posResponse(products);
+  }
+
+  // POST /api/pos/products  — admin only
+  @Post('products')
+  @Roles('ADMIN')
+  async createProduct(@Body() body: unknown) {
+    const parsed = CreateProductSchema.safeParse(body);
+    if (!parsed.success) {
+      const errors = parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
+      throw new BadRequestException(posError('Validation failed', errors));
+    }
+    const product = await this.posService.createProduct(parsed.data);
+    return posResponse(product, 'Product created successfully');
   }
 
   // GET /api/pos/chefs
