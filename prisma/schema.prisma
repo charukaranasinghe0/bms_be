@@ -6,25 +6,38 @@ datasource db {
   provider = "postgresql"
 }
 
+enum CookCategory {
+  PASTRY
+  BREAD
+  HOT_FOOD
+}
+
+enum ChefOrderStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String        @id @default(uuid())
+  username      String        @unique
+  password      String
+  role          String        @default("USER")
+  cookCategory  CookCategory?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   refreshTokens RefreshToken[]
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash String
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([userId])
 }
@@ -42,18 +55,22 @@ model Customer {
 }
 
 model Product {
-  id          String      @id @default(uuid())
-  name        String
-  price       Float
-  isAvailable Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  orderItems  OrderItem[]
+  id              String        @id @default(uuid())
+  name            String
+  price           Float
+  imageUrl        String?
+  isAvailable     Boolean       @default(true)
+  requiresCooking Boolean       @default(false)
+  cookCategory    CookCategory?
+  createdAt       DateTime      @default(now())
+  orderItems      OrderItem[]
+  chefOrders      ChefOrder[]
 }
 
 model Chef {
   id     String @id @default(uuid())
   name   String
-  status String @default("AVAILABLE") // AVAILABLE | BUSY
+  status String @default("AVAILABLE")
 }
 
 model Order {
@@ -63,21 +80,40 @@ model Order {
   subtotal      Float
   discount      Float       @default(0)
   total         Float
-  paymentMethod String      // CASH | CARD
+  paymentMethod String
   status        String      @default("PAID")
-  txRef         String?     // simulated card transaction reference
+  txRef         String?
   createdAt     DateTime    @default(now())
   items         OrderItem[]
+  chefOrders    ChefOrder[]
 }
 
 model OrderItem {
-  id             String  @id @default(uuid())
+  id             String      @id @default(uuid())
   orderId        String
-  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId      String
-  product        Product @relation(fields: [productId], references: [id])
+  product        Product     @relation(fields: [productId], references: [id])
   quantity       Int
-  price          Float   // snapshot of product price at time of order
-  assignedChefId String? // optional, no assignment logic — stored only
+  price          Float
+  assignedChefId String?
+  chefOrders     ChefOrder[]
 }
 
+model ChefOrder {
+  id           String          @id @default(uuid())
+  orderId      String
+  order        Order           @relation(fields: [orderId], references: [id])
+  orderItemId  String
+  orderItem    OrderItem       @relation(fields: [orderItemId], references: [id])
+  productId    String
+  product      Product         @relation(fields: [productId], references: [id])
+  cookCategory CookCategory
+  status       ChefOrderStatus @default(PENDING)
+  acceptedAt   DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime        @default(now())
+
+  @@index([cookCategory, status])
+  @@index([orderId])
+}
