@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const twilio = require('twilio') as typeof import('twilio').default;
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const twilio = require('twilio') as any;
 
 export interface OrderNotificationData {
   customer: { name: string; phone: string; email?: string | null };

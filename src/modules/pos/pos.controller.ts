@@ -70,6 +70,13 @@ export class PosController {
     return posResponse(chefs);
   }
 
+  // GET /api/pos/orders
+  @Get('orders')
+  async getOrders() {
+    const orders = await this.orderRepo.findAll();
+    return posResponse(orders);
+  }
+
   // POST /api/pos/orders
   @Post('orders')
   async createOrder(@Body() body: unknown) {

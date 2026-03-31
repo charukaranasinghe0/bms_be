@@ -21,6 +21,16 @@ export interface CreateOrderInput {
 export class OrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll() {
+    return this.prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: { include: { product: { select: { name: true } } } },
+        customer: { select: { id: true, name: true, phone: true, email: true } },
+      },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.order.findUnique({
       where: { id },
