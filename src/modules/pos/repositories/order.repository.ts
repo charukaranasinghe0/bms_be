@@ -21,14 +21,29 @@ export interface CreateOrderInput {
 export class OrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        items: { include: { product: { select: { name: true } } } },
-        customer: { select: { id: true, name: true, phone: true, email: true } },
-      },
-    });
+  async findAll(params?: { skip?: number; take?: number; customerId?: string; from?: string; to?: string }) {
+    const where: Record<string, unknown> = {};
+    if (params?.customerId) where.customerId = params.customerId;
+    if (params?.from || params?.to) {
+      where.createdAt = {
+        ...(params.from ? { gte: new Date(params.from) } : {}),
+        ...(params.to ? { lte: new Date(params.to) } : {}),
+      };
+    }
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: params?.skip ?? 0,
+        take: params?.take ?? 50,
+        include: {
+          items: { include: { product: { select: { name: true } } } },
+          customer: { select: { id: true, name: true, phone: true, email: true } },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+    return { orders, total };
   }
 
   async findById(id: string) {

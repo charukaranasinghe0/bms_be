@@ -11,20 +11,24 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.register(dto);
-
+    const { accessToken, refreshToken, user } = await this.authService.register(dto);
     this.setRefreshCookie(res, refreshToken);
-
-    return { accessToken };
+    return { accessToken, user };
   }
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.login(dto);
-
+    const { accessToken, refreshToken, user } = await this.authService.login(dto);
     this.setRefreshCookie(res, refreshToken);
+    return { accessToken, user };
+  }
 
-    return { accessToken };
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logout(req.user as { userId: string });
+    res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+    return { message: 'Logged out successfully' };
   }
 
   @UseGuards(JwtAuthGuard)

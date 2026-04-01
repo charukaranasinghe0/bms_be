@@ -71,11 +71,23 @@ export class PosController {
     return posResponse(chefs);
   }
 
-  // GET /api/pos/orders
+  // GET /api/pos/orders?skip=0&take=50&customerId=&from=&to=
   @Get('orders')
-  async getOrders() {
-    const orders = await this.orderRepo.findAll();
-    return posResponse(orders);
+  async getOrders(
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+    @Query('customerId') customerId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const result = await this.orderRepo.findAll({
+      skip: skip ? parseInt(skip) : 0,
+      take: take ? parseInt(take) : 50,
+      customerId: customerId || undefined,
+      from: from || undefined,
+      to: to || undefined,
+    });
+    return posResponse(result);
   }
 
   // GET /api/pos/chef-orders/pending — items being cooked

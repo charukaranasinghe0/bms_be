@@ -89,28 +89,19 @@ export class AuthService {
     });
   }
 
-  async register(dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {
-    const existing = await this.prisma.user.findUnique({
-      where: { username: dto.username },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Username already exists');
-    }
+  async register(dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string; user: { id: string; username: string; role: string } }> {
+    const existing = await this.prisma.user.findUnique({ where: { username: dto.username } });
+    if (existing) throw new BadRequestException('Username already exists');
 
     const passwordHash = await this.hashPassword(dto.password);
-
     const user = await this.prisma.user.create({
-      data: {
-        username: dto.username,
-        password: passwordHash,
-      },
+      data: { username: dto.username, password: passwordHash },
     });
 
     const { accessToken, refreshToken, refreshExpiresAt } = await this.generateTokens(user);
     await this.persistRefreshToken(user.id, refreshToken, refreshExpiresAt);
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, user: { id: user.id, username: user.username, role: user.role } };
   }
 
   async validateUser(username: string, password: string) {
@@ -130,17 +121,22 @@ export class AuthService {
     return user;
   }
 
-  async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+  async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string; user: { id: string; username: string; role: string } }> {
     const user = await this.validateUser(dto.username, dto.password);
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const { accessToken, refreshToken, refreshExpiresAt } = await this.generateTokens(user);
     await this.persistRefreshToken(user.id, refreshToken, refreshExpiresAt);
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, user: { id: user.id, username: user.username, role: user.role } };
+  }
+
+  async logout(payload: { userId: string }): Promise<void> {
+    // Revoke all active refresh tokens for this user
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: payload.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
