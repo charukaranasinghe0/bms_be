@@ -10,7 +10,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ProductsService, CreateProductInput, UpdateProductInput } from './products.service';
+import { ProductsService } from './products.service';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -45,14 +46,14 @@ export class ProductsController {
   // POST /api/products  — ADMIN only
   @Post()
   @Roles('ADMIN')
-  async create(@Body() body: CreateProductInput) {
+  async create(@Body() body: CreateProductDto) {
     return ok(await this.productsService.create(body), 'Product created');
   }
 
   // PATCH /api/products/:id  — ADMIN only
   @Patch(':id')
   @Roles('ADMIN')
-  async update(@Param('id') id: string, @Body() body: UpdateProductInput) {
+  async update(@Param('id') id: string, @Body() body: UpdateProductDto) {
     return ok(await this.productsService.update(id, body), 'Product updated');
   }
 

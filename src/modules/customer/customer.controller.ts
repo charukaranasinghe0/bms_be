@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, NotFoundException, UseGuards, HttpCode } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto.js';
+import { UpdateCustomerDto } from './dto/update-customer.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -38,7 +39,7 @@ export class CustomerController {
 
   @Put(':id')
   @Roles('CASHIER', 'ADMIN')
-  async updateCustomer(@Param('id') id: string, @Body() dto: Partial<CreateCustomerDto>) {
+  async updateCustomer(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
     return this.customerService.updateCustomer(id, dto);
   }
 

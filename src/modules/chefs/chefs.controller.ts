@@ -10,7 +10,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ChefsService, CreateChefInput, UpdateChefInput } from './chefs.service';
+import { ChefsService } from './chefs.service';
+import { CreateChefDto, UpdateChefDto, SetChefStatusDto } from './dto/chef.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -45,28 +46,22 @@ export class ChefsController {
   // POST /api/chefs  — ADMIN only
   @Post()
   @Roles('ADMIN')
-  async create(@Body() body: CreateChefInput) {
+  async create(@Body() body: CreateChefDto) {
     return ok(await this.chefsService.create(body), 'Chef created');
   }
 
   // PATCH /api/chefs/:id  — ADMIN only
   @Patch(':id')
   @Roles('ADMIN')
-  async update(@Param('id') id: string, @Body() body: UpdateChefInput) {
+  async update(@Param('id') id: string, @Body() body: UpdateChefDto) {
     return ok(await this.chefsService.update(id, body), 'Chef updated');
   }
 
   // PATCH /api/chefs/:id/status  — ADMIN only (manually set AVAILABLE | BUSY)
   @Patch(':id/status')
   @Roles('ADMIN')
-  async setStatus(
-    @Param('id') id: string,
-    @Body('status') status: 'AVAILABLE' | 'BUSY',
-  ) {
-    if (status !== 'AVAILABLE' && status !== 'BUSY') {
-      return { success: false, message: 'status must be AVAILABLE or BUSY' };
-    }
-    return ok(await this.chefsService.setStatus(id, status), `Chef marked ${status}`);
+  async setStatus(@Param('id') id: string, @Body() body: SetChefStatusDto) {
+    return ok(await this.chefsService.setStatus(id, body.status), `Chef marked ${body.status}`);
   }
 
   // DELETE /api/chefs/:id  — ADMIN only

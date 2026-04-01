@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -29,6 +30,13 @@ async function bootstrap() {
   });
 
   app.useGlobalFilters(new AllExceptionsFilter(configService));
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,        // strip unknown properties
+    forbidNonWhitelisted: true, // throw on unknown properties
+    transform: true,        // auto-transform payloads to DTO instances
+    transformOptions: { enableImplicitConversion: true },
+  }));
 
   const port = app.get(ConfigService).get<number>('PORT') ?? 4000;
   await app.listen(port);

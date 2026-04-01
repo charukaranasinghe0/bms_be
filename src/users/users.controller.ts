@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Patch, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { UsersService } from './users.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,7 +25,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async changePassword(
     @CurrentUser() user: JwtUserPayload | undefined,
-    @Body() body: { currentPassword: string; newPassword: string },
+    @Body() body: ChangePasswordDto,
     @Res() res: Response,
   ): Promise<void> {
     if (!user) { res.status(401).json({ message: 'Authentication required' }); return; }
