@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { KitchenController } from './kitchen.controller';
 import { KitchenService } from './kitchen.service';
+import { KitchenGateway } from './kitchen.gateway';
 
 @Module({
   controllers: [KitchenController],
-  providers: [KitchenService],
+  providers: [KitchenService, KitchenGateway],
+  exports: [KitchenGateway],
 })
 export class KitchenModule {}

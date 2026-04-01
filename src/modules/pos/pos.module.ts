@@ -9,9 +9,10 @@ import { OrderRepository } from './repositories/order.repository';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ProductsModule } from '../products/products.module';
 import { ChefsModule } from '../chefs/chefs.module';
+import { KitchenModule } from '../kitchen/kitchen.module';
 
 @Module({
-  imports: [PrismaModule, ProductsModule, ChefsModule],
+  imports: [PrismaModule, ProductsModule, ChefsModule, KitchenModule],
   controllers: [PosController],
   providers: [
     PosService,

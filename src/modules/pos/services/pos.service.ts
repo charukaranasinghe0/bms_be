@@ -9,6 +9,7 @@ import { ProductRepository } from '../repositories/product.repository';
 import { OrderRepository } from '../repositories/order.repository';
 import { ChefsService } from '../../chefs/chefs.service';
 import { NotificationService } from './notification.service';
+import { KitchenGateway } from '../../kitchen/kitchen.gateway';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -21,6 +22,7 @@ export class PosService {
     private readonly orderRepo: OrderRepository,
     private readonly chefsService: ChefsService,
     private readonly notificationService: NotificationService,
+    private readonly kitchenGateway: KitchenGateway,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
@@ -159,9 +161,17 @@ export class PosService {
       });
     }
 
-    // Mark as acknowledged by deleting or keeping with a new status
-    // We delete it so it disappears from the notification bar
+    // Mark as acknowledged — delete so it disappears from notification bar
     await this.prisma.chefOrder.delete({ where: { id: chefOrderId } });
+
+    // Broadcast removal to kitchen screens
+    this.kitchenGateway.emitOrderRemoved(chefOrderId);
+
+    // Broadcast updated chef status
+    if (orderItem?.assignedChefId) {
+      const updatedChef = await this.prisma.chef.findUnique({ where: { id: orderItem.assignedChefId } });
+      if (updatedChef) this.kitchenGateway.emitChefUpdated(updatedChef);
+    }
 
     return { acknowledged: true, chefOrderId };
   }
@@ -271,6 +281,33 @@ export class PosService {
           };
         }),
       });
+
+      // Broadcast new orders to kitchen screens in real-time
+      const newChefOrders = await this.prisma.chefOrder.findMany({
+        where: { orderId: order.id },
+        include: {
+          product: { select: { name: true, cookCategory: true, imageUrl: true, requiresCooking: true } },
+          order: {
+            select: {
+              id: true, createdAt: true, paymentMethod: true,
+              customer: { select: { name: true, phone: true } },
+            },
+          },
+          orderItem: { select: { quantity: true, assignedChefId: true } },
+        },
+      });
+
+      // Resolve chef names and emit each new order
+      const chefIds = [...new Set(newChefOrders.map(o => o.orderItem.assignedChefId).filter((id): id is string => !!id))];
+      const chefs = chefIds.length > 0 ? await this.prisma.chef.findMany({ where: { id: { in: chefIds } }, select: { id: true, name: true } }) : [];
+      const chefMap = new Map(chefs.map(c => [c.id, c.name]));
+
+      for (const co of newChefOrders) {
+        this.kitchenGateway.emitNewOrder({
+          ...co,
+          assignedChefName: co.orderItem.assignedChefId ? (chefMap.get(co.orderItem.assignedChefId) ?? null) : null,
+        });
+      }
     }
 
     return order;

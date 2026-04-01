@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { KitchenGateway } from './kitchen.gateway';
 
 @Injectable()
 export class KitchenService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: KitchenGateway,
+  ) {}
 
   /**
    * Get all active chef orders for the kitchen display.
@@ -148,7 +152,7 @@ export class KitchenService {
       return chefOrder; // idempotent
     }
 
-    return this.prisma.chefOrder.update({
+    const updated = await this.prisma.chefOrder.update({
       where: { id: chefOrderId },
       data: { status: 'IN_PROGRESS', acceptedAt: new Date() },
       include: {
@@ -157,6 +161,10 @@ export class KitchenService {
         orderItem: { select: { quantity: true, assignedChefId: true } },
       },
     });
+
+    // Broadcast to all kitchen screens
+    this.gateway.emitOrderUpdated(updated);
+    return updated;
   }
 
   /**
@@ -172,7 +180,7 @@ export class KitchenService {
       return chefOrder; // idempotent
     }
 
-    return this.prisma.chefOrder.update({
+    const updated = await this.prisma.chefOrder.update({
       where: { id: chefOrderId },
       data: { status: 'DONE', completedAt: new Date() },
       include: {
@@ -181,5 +189,9 @@ export class KitchenService {
         orderItem: { select: { quantity: true, assignedChefId: true } },
       },
     });
+
+    // Broadcast to all kitchen screens and POS panels
+    this.gateway.emitOrderUpdated(updated);
+    return updated;
   }
 }
