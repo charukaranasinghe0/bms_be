@@ -10,6 +10,7 @@ import { PosModule } from './modules/pos/pos.module';
 import { ProductsModule } from './modules/products/products.module';
 import { ChefsModule } from './modules/chefs/chefs.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { KitchenModule } from './modules/kitchen/kitchen.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     ProductsModule,
     ChefsModule,
     ReportsModule,
+    KitchenModule,
   ],
   controllers: [AppController],
   providers: [AppService],
