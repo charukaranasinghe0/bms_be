@@ -57,12 +57,18 @@ model Customer {
 model Product {
   id              String        @id @default(uuid())
   name            String
+  description     String?
+  sku             String?       @unique
   price           Float
+  unit            String        @default("piece")
+  stockQty        Int           @default(0)
+  lowStockThreshold Int         @default(0)
   imageUrl        String?
   isAvailable     Boolean       @default(true)
   requiresCooking Boolean       @default(false)
   cookCategory    CookCategory?
   createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   orderItems      OrderItem[]
   chefOrders      ChefOrder[]
 }

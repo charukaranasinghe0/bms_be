@@ -52,8 +52,6 @@ export class PosService {
       isAvailable: p.isAvailable,
       requiresCooking: p.requiresCooking,
       cookCategory: p.cookCategory ?? null,
-      // POS UI hint: unavailable products can be ordered with a chef assigned
-      ...(p.isAvailable ? {} : { canAssignToChef: true }),
     }));
   }
 
