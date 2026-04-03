@@ -10,6 +10,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ChefsService } from '../../chefs/chefs.service';
 import { NotificationService } from './notification.service';
 import { KitchenGateway } from '../../kitchen/kitchen.gateway';
+import { InventoryService } from '../../inventory/inventory.service';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,6 +24,7 @@ export class PosService {
     private readonly chefsService: ChefsService,
     private readonly notificationService: NotificationService,
     private readonly kitchenGateway: KitchenGateway,
+    private readonly inventoryService: InventoryService,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
@@ -306,6 +308,16 @@ export class PosService {
           assignedChefName: co.orderItem.assignedChefId ? (chefMap.get(co.orderItem.assignedChefId) ?? null) : null,
         });
       }
+    }
+
+    // ── Deduct inventory ingredients + sync product availability ──────────
+    const changedProducts = await this.inventoryService.deductOrderIngredients(
+      resolvedItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    );
+
+    // Broadcast any products that became unavailable due to stock running out
+    for (const p of changedProducts) {
+      this.kitchenGateway.emitProductUpdated(p);
     }
 
     return order;

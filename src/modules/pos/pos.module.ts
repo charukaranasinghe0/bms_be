@@ -10,9 +10,10 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { ProductsModule } from '../products/products.module';
 import { ChefsModule } from '../chefs/chefs.module';
 import { KitchenModule } from '../kitchen/kitchen.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
-  imports: [PrismaModule, ProductsModule, ChefsModule, KitchenModule],
+  imports: [PrismaModule, ProductsModule, ChefsModule, KitchenModule, InventoryModule],
   controllers: [PosController],
   providers: [
     PosService,

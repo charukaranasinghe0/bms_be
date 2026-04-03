@@ -6,6 +6,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum InventoryAdjustmentType {
+  USE
+  SALE
+  DAMAGE
+  LOSS
+}
+
 enum CookCategory {
   PASTRY
   BREAD
@@ -71,6 +78,7 @@ model Product {
   updatedAt       DateTime      @updatedAt
   orderItems      OrderItem[]
   chefOrders      ChefOrder[]
+  recipeItems     RecipeItem[]
 }
 
 model Chef {
@@ -122,4 +130,87 @@ model ChefOrder {
 
   @@index([cookCategory, status])
   @@index([orderId])
+}
+
+// ── Inventory ─────────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id               String          @id @default(uuid())
+  name             String          @unique
+  category         String
+  unit             String
+  isPerishable     Boolean         @default(false)
+  minReorderLevel  Float           @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  batches          InventoryBatch[]
+  recipeItems      RecipeItem[]
+}
+
+model InventoryBatch {
+  id             String       @id @default(uuid())
+  itemId         String
+  item           InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  lotNumber      String?
+  quantity       Float        @default(0)
+  unitCost       Float?
+  expirationDate DateTime?
+  receivedAt     DateTime     @default(now())
+  adjustments    InventoryAdjustment[]
+
+  @@index([itemId])
+}
+
+model InventoryAdjustment {
+  id        String                  @id @default(uuid())
+  batchId   String
+  batch     InventoryBatch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  type      InventoryAdjustmentType
+  quantity  Float
+  reason    String?
+  cost      Float?
+  createdAt DateTime                @default(now())
+
+  @@index([batchId])
+}
+
+model RecipeItem {
+  id              String        @id @default(uuid())
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantityPerUnit Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([productId, inventoryItemId])
+  @@index([productId])
+}
+
+// ── Equipment ─────────────────────────────────────────────────────────────────
+
+model Equipment {
+  id                      String                @id @default(uuid())
+  name                    String
+  serialNumber            String?
+  purchaseDate            DateTime?
+  warrantyExpiryDate      DateTime?
+  maintenanceIntervalDays Int?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  maintenances            EquipmentMaintenance[]
+}
+
+model EquipmentMaintenance {
+  id           String    @id @default(uuid())
+  equipmentId  String
+  equipment    Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  performedAt  DateTime  @default(now())
+  description  String?
+  cost         Float?
+  nextDueDate  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([equipmentId])
 }

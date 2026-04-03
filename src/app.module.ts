@@ -11,6 +11,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { ChefsModule } from './modules/chefs/chefs.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { KitchenModule } from './modules/kitchen/kitchen.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { KitchenModule } from './modules/kitchen/kitchen.module';
     ChefsModule,
     ReportsModule,
     KitchenModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

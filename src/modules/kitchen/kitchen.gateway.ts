@@ -52,4 +52,9 @@ export class KitchenGateway implements OnGatewayConnection, OnGatewayDisconnect 
   emitOrderRemoved(chefOrderId: string) {
     this.server.emit('kitchen:order:removed', { id: chefOrderId });
   }
+
+  /** Product availability changed — POS should refresh its product list */
+  emitProductUpdated(product: unknown) {
+    this.server.emit('kitchen:product:updated', product);
+  }
 }
