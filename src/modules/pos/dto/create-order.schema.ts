@@ -10,6 +10,7 @@ export const CreateOrderSchema = z.object({
   customerId: z.string().uuid({ message: 'customerId must be a valid UUID' }),
   items: z.array(OrderItemSchema).min(1, { message: 'Order must contain at least one item' }),
   discount: z.number().min(0).max(100).default(0),
+  loyaltyDiscount: z.number().min(0).default(0),
   paymentMethod: z.enum(['CASH', 'CARD'] as const, {
     error: 'paymentMethod must be CASH or CARD',
   }),

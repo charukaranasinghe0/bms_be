@@ -11,6 +11,7 @@ import { ChefsService } from '../../chefs/chefs.service';
 import { NotificationService } from './notification.service';
 import { KitchenGateway } from '../../kitchen/kitchen.gateway';
 import { InventoryService } from '../../inventory/inventory.service';
+import { CustomerProfileService } from '../../customer-profile/customer-profile.service';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -25,22 +26,12 @@ export class PosService {
     private readonly notificationService: NotificationService,
     private readonly kitchenGateway: KitchenGateway,
     private readonly inventoryService: InventoryService,
+    private readonly customerProfileService: CustomerProfileService,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
   async lookupCustomerByPhone(phone: string) {
-    const customer = await this.customerRepo.findByPhone(phone);
-    if (!customer) return { exists: false };
-    return {
-      exists: true,
-      data: {
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        email: customer.email ?? null,
-        createdAt: customer.createdAt,
-      },
-    };
+    return this.customerProfileService.getPosCustomerInfo(phone);
   }
 
   // ── Product catalog ────────────────────────────────────────────────────────
@@ -237,7 +228,8 @@ export class PosService {
     );
     const discountPercent = dto.discount ?? 0;
     const discountAmount = parseFloat(((subtotal * discountPercent) / 100).toFixed(2));
-    const total = parseFloat((subtotal - discountAmount).toFixed(2));
+    const loyaltyDiscountAmount = parseFloat((dto.loyaltyDiscount ?? 0).toFixed(2));
+    const total = parseFloat((subtotal - discountAmount - loyaltyDiscountAmount).toFixed(2));
 
     // 6. Handle payment (CARD stub — not yet implemented)
     const txRef =
@@ -249,8 +241,8 @@ export class PosService {
     const order = await this.orderRepo.create({
       customerId: dto.customerId,
       subtotal: parseFloat(subtotal.toFixed(2)),
-      discount: discountAmount,
-      total,
+      discount: parseFloat((discountAmount + loyaltyDiscountAmount).toFixed(2)),
+      total: Math.max(0, total),
       paymentMethod: dto.paymentMethod,
       status: 'PAID',
       txRef,
@@ -315,9 +307,16 @@ export class PosService {
       resolvedItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
     );
 
-    // Broadcast any products that became unavailable due to stock running out
     for (const p of changedProducts) {
       this.kitchenGateway.emitProductUpdated(p);
+    }
+
+    // ── Award loyalty points ───────────────────────────────────────────────
+    void this.customerProfileService.awardPointsForOrder(dto.customerId, order.total);
+
+    // ── Redeem points if loyalty discount was used ─────────────────────────
+    if (loyaltyDiscountAmount > 0) {
+      void this.customerProfileService.redeemPoints(dto.customerId);
     }
 
     return order;

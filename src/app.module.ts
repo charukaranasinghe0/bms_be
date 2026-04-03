@@ -12,6 +12,7 @@ import { ChefsModule } from './modules/chefs/chefs.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { CustomerProfileModule } from './modules/customer-profile/customer-profile.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
     ReportsModule,
     KitchenModule,
     InventoryModule,
+    CustomerProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
