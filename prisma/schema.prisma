@@ -205,6 +205,40 @@ model RecipeItem {
   @@index([productId])
 }
 
+// ── Promotions ────────────────────────────────────────────────────────────────
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum PromotionScope {
+  ORDER        // applies to the whole order
+  PRODUCT      // applies to specific products
+  CATEGORY     // applies to a product category (cookCategory)
+}
+
+model Promotion {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  discountType DiscountType
+  discountValue Float
+  scope       PromotionScope @default(ORDER)
+  // For PRODUCT scope: comma-separated productIds stored as JSON array
+  productIds  String[]       @default([])
+  // For CATEGORY scope: one of PASTRY | BREAD | HOT_FOOD
+  category    String?
+  // Validity window
+  startsAt    DateTime
+  endsAt      DateTime
+  isActive    Boolean        @default(true)
+  minOrderAmount Float?      // optional minimum order total to qualify
+  createdBy   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
 model Equipment {

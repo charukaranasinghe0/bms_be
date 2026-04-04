@@ -12,6 +12,7 @@ import { NotificationService } from './notification.service';
 import { KitchenGateway } from '../../kitchen/kitchen.gateway';
 import { InventoryService } from '../../inventory/inventory.service';
 import { CustomerProfileService } from '../../customer-profile/customer-profile.service';
+import { PromotionsService } from '../../promotions/promotions.service';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -27,6 +28,7 @@ export class PosService {
     private readonly kitchenGateway: KitchenGateway,
     private readonly inventoryService: InventoryService,
     private readonly customerProfileService: CustomerProfileService,
+    private readonly promotionsService: PromotionsService,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
@@ -229,7 +231,19 @@ export class PosService {
     const discountPercent = dto.discount ?? 0;
     const discountAmount = parseFloat(((subtotal * discountPercent) / 100).toFixed(2));
     const loyaltyDiscountAmount = parseFloat((dto.loyaltyDiscount ?? 0).toFixed(2));
-    const total = parseFloat((subtotal - discountAmount - loyaltyDiscountAmount).toFixed(2));
+
+    // 5a. Apply active promotions
+    const productMap3 = new Map(products.map((p) => [p.id, p]));
+    const itemsWithCategory = resolvedItems.map((i) => ({
+      ...i,
+      cookCategory: productMap3.get(i.productId)?.cookCategory ?? null,
+    }));
+    const { appliedPromotions, totalPromotionDiscount } =
+      await this.promotionsService.applyPromotions(itemsWithCategory, subtotal);
+
+    const total = parseFloat(
+      (subtotal - discountAmount - loyaltyDiscountAmount - totalPromotionDiscount).toFixed(2),
+    );
 
     // 6. Handle payment (CARD stub — not yet implemented)
     const txRef =
@@ -241,7 +255,7 @@ export class PosService {
     const order = await this.orderRepo.create({
       customerId: dto.customerId,
       subtotal: parseFloat(subtotal.toFixed(2)),
-      discount: parseFloat((discountAmount + loyaltyDiscountAmount).toFixed(2)),
+      discount: parseFloat((discountAmount + loyaltyDiscountAmount + totalPromotionDiscount).toFixed(2)),
       total: Math.max(0, total),
       paymentMethod: dto.paymentMethod,
       status: 'PAID',
@@ -319,6 +333,6 @@ export class PosService {
       void this.customerProfileService.redeemPoints(dto.customerId);
     }
 
-    return order;
+    return { ...order, appliedPromotions };
   }
 }
