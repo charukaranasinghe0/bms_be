@@ -25,6 +25,40 @@ enum ChefOrderStatus {
   DONE
 }
 
+enum LoyaltyTxType {
+  EARNED
+  REDEEMED
+  ADJUSTED
+}
+
+model LoyaltyTier {
+  id               String   @id @default(uuid())
+  name             String   @unique
+  minPoints        Int      @map("min_points")
+  maxPoints        Int?     @map("max_points")        // null = open-ended top tier
+  pointMultiplier  Decimal  @map("point_multiplier") @db.Decimal(5, 2)
+  perksConfig      Json     @default("{}") @map("perks_config")
+  sortOrder        Int      @map("sort_order")        // ascending, drives range ordering
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([minPoints])
+  @@map("loyalty_tiers")
+}
+
+model LoyaltySettings {
+  id                   String   @id @default(uuid())
+  pointsPerCurrencyUnit Decimal @map("points_per_currency_unit") @db.Decimal(5, 2)
+  redemptionThreshold  Int      @map("redemption_threshold")     // points needed per redemption block
+  redemptionValue      Decimal  @map("redemption_value") @db.Decimal(10, 2) // currency value per block
+  currencyCode         String   @default("USD") @map("currency_code")
+  currencySymbol       String   @default("$") @map("currency_symbol")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("loyalty_settings")
+}
+
 model User {
   id            String        @id @default(uuid())
   username      String        @unique
@@ -50,32 +84,34 @@ model RefreshToken {
 }
 
 model Customer {
-  id            String   @id @default(uuid()) @map("id")
-  name          String   @map("name")
-  email         String?  @unique @map("email")
-  phone         String   @unique @map("phone")
-  loyaltyPoints Int      @default(0)
-  customerType  String   @default("NEW")
-  createdAt     DateTime @default(now()) @map("createdat")
-  orders        Order[]
+  id             String      @id @default(uuid()) @map("id")
+  name           String      @map("name")
+  email          String?     @unique @map("email")
+  phone          String      @unique @map("phone")
+  currentPoints  Int         @default(0) @map("current_points")
+  lifetimePoints Int         @default(0) @map("lifetime_points")
+  tierName       String      @default("") @map("tier_name")  // dynamic — matches LoyaltyTier.name
+  createdAt      DateTime    @default(now()) @map("createdat")
+  orders         Order[]
+  loyaltyTxs     LoyaltyPointTransaction[]
 
   @@index([phone])
   @@map("customer")
 }
 
-model LoyaltyConfig {
-  id                    String   @id @default(uuid())
-  currencyCode          String   @default("LKR")
-  currencySymbol        String   @default("Rs")
-  pointsPerAmount       Float    @default(1)
-  amountPerPoints       Float    @default(100)
-  redeemThreshold       Int      @default(100)
-  redeemDiscount        Float    @default(20)
-  regularThreshold      Int      @default(50)
-  loyalThreshold        Int      @default(200)
-  vipThreshold          Int      @default(500)
-  updatedAt             DateTime @updatedAt
-  updatedBy             String?
+model LoyaltyPointTransaction {
+  id         String        @id @default(uuid())
+  customerId String        @map("customer_id")
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type       LoyaltyTxType
+  points     Int           // positive = earned/adjusted-up, negative = redeemed/adjusted-down
+  orderId    String?       @map("order_id")
+  note       String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@index([orderId])
+  @@map("loyalty_point_transactions")
 }
 
 model Product {
