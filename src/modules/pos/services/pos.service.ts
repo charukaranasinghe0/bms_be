@@ -10,6 +10,8 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ChefsService } from '../../chefs/chefs.service';
 import { NotificationService } from './notification.service';
 import { KitchenGateway } from '../../kitchen/kitchen.gateway';
+import { LoyaltyService } from '../../customer-profile/loyalty.service';
+import { TierEngineService } from '../../customer-profile/tier-engine.service';
 import { CreateOrderDto } from '../dto/create-order.schema';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,20 +25,33 @@ export class PosService {
     private readonly chefsService: ChefsService,
     private readonly notificationService: NotificationService,
     private readonly kitchenGateway: KitchenGateway,
+    private readonly loyaltyService: LoyaltyService,
+    private readonly tierEngine: TierEngineService,
   ) {}
 
   // ── Customer lookup ────────────────────────────────────────────────────────
   async lookupCustomerByPhone(phone: string) {
     const customer = await this.customerRepo.findByPhone(phone);
     if (!customer) return { exists: false };
+
+    const settings = await this.tierEngine.getSettings();
+    const redeemableBlocks  = Math.floor(customer.currentPoints / settings.redemptionThreshold);
+    const availableDiscount = redeemableBlocks * Number(settings.redemptionValue);
+
     return {
       exists: true,
       data: {
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        email: customer.email ?? null,
-        createdAt: customer.createdAt,
+        id:               customer.id,
+        name:             customer.name,
+        phone:            customer.phone,
+        email:            customer.email ?? null,
+        createdAt:        customer.createdAt,
+        currentPoints:    customer.currentPoints,
+        lifetimePoints:   customer.lifetimePoints,
+        tierName:         customer.tierName,
+        loyaltyPoints:    customer.currentPoints,
+        loyaltyDiscount:  availableDiscount,
+        customerType:     customer.tierName,
       },
     };
   }
@@ -235,7 +250,8 @@ export class PosService {
     );
     const discountPercent = dto.discount ?? 0;
     const discountAmount = parseFloat(((subtotal * discountPercent) / 100).toFixed(2));
-    const total = parseFloat((subtotal - discountAmount).toFixed(2));
+    const loyaltyDiscountAmt = parseFloat((dto.loyaltyDiscount ?? 0).toFixed(2));
+    const total = parseFloat((subtotal - discountAmount - loyaltyDiscountAmt).toFixed(2));
 
     // 6. Handle payment (CARD stub — not yet implemented)
     const txRef =
@@ -253,6 +269,11 @@ export class PosService {
       status: 'PAID',
       txRef,
       items: resolvedItems,
+    });
+
+    // 8. Award loyalty points on the amount actually paid (after all discounts)
+    void this.loyaltyService.addPoints(dto.customerId, total, order.id).catch(() => {
+      // Non-blocking — points failure should not fail the order
     });
 
     // Create ChefOrder entries for items that have a chef assigned
