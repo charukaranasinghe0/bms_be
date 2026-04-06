@@ -14,6 +14,7 @@ import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { CustomerProfileModule } from './modules/customer-profile/customer-profile.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
+import { ShiftsModule } from './modules/shifts/shifts.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
     InventoryModule,
     CustomerProfileModule,
     PromotionsModule,
+    ShiftsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -239,6 +239,68 @@ model Promotion {
   updatedAt   DateTime       @updatedAt
 }
 
+// ── Shifts & Tasks ────────────────────────────────────────────────────────────
+
+enum ShiftStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+model Shift {
+  id          String            @id @default(uuid())
+  date        DateTime          @db.Date
+  startTime   String            // e.g. "08:00"
+  endTime     String            // e.g. "16:00"
+  status      ShiftStatus       @default(SCHEDULED)
+  notes       String?
+  createdBy   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  assignments ShiftAssignment[]
+  tasks       ShiftTask[]
+}
+
+model ShiftAssignment {
+  id        String   @id @default(uuid())
+  shiftId   String
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  userId    String
+  duty      String   // e.g. "CASHIER", "BAKER", "CLEANER"
+  clockIn   DateTime?
+  clockOut  DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([shiftId, userId])
+  @@index([shiftId])
+  @@index([userId])
+}
+
+model ShiftTask {
+  id          String     @id @default(uuid())
+  shiftId     String
+  shift       Shift      @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  assignedTo  String     // userId
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([shiftId])
+  @@index([assignedTo])
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
 model Equipment {
