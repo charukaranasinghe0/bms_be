@@ -256,7 +256,6 @@ export class PosService {
     );
     const discountPercent = dto.discount ?? 0;
     const discountAmount = parseFloat(((subtotal * discountPercent) / 100).toFixed(2));
-    const loyaltyDiscountAmt = parseFloat((dto.loyaltyDiscount ?? 0).toFixed(2));
     const loyaltyDiscountAmount = parseFloat((dto.loyaltyDiscount ?? 0).toFixed(2));
 
     // 5a. Apply active promotions
@@ -269,7 +268,7 @@ export class PosService {
       await this.promotionsService.applyPromotions(itemsWithCategory, subtotal);
 
     const total = parseFloat(
-      (subtotal - discountAmount - loyaltyDiscountAmount - totalPromotionDiscount - loyaltyDiscountAmt).toFixed(2),
+      (subtotal - discountAmount - loyaltyDiscountAmount - totalPromotionDiscount).toFixed(2),
     );
 
     // 6. Handle payment (CARD stub — not yet implemented)
@@ -355,14 +354,6 @@ export class PosService {
 
     for (const p of changedProducts) {
       this.kitchenGateway.emitProductUpdated(p);
-    }
-
-    // ── Award loyalty points ───────────────────────────────────────────────
-    void this.customerProfileService.awardPointsForOrder(dto.customerId, order.total);
-
-    // ── Redeem points if loyalty discount was used ─────────────────────────
-    if (loyaltyDiscountAmount > 0) {
-      void this.customerProfileService.redeemPoints(dto.customerId);
     }
 
     return { ...order, appliedPromotions };

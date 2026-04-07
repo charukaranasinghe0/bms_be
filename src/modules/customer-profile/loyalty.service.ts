@@ -140,6 +140,33 @@ export class LoyaltyService {
     return { transactions: txs, total };
   }
 
+  async getPosCustomerInfo(phone: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { phone } });
+    if (!customer) return { exists: false as const };
+
+    const [tierEval, settings] = await Promise.all([
+      this.tierEngine.evaluateCustomerTier(customer.lifetimePoints),
+      this.tierEngine.getSettings(),
+    ]);
+
+    const redeemableBlocks = Math.floor(customer.currentPoints / settings.redemptionThreshold);
+    const loyaltyDiscount  = redeemableBlocks * Number(settings.redemptionValue);
+
+    return {
+      exists: true as const,
+      data: {
+        id:             customer.id,
+        name:           customer.name,
+        phone:          customer.phone,
+        email:          customer.email,
+        loyaltyPoints:  customer.currentPoints,
+        customerType:   tierEval.tierName,
+        loyaltyDiscount,
+        createdAt:      customer.createdAt,
+      },
+    };
+  }
+
   // ── Full customer loyalty profile ─────────────────────────────────────────
   async getProfile(customerId: string) {
     const customer = await this.prisma.customer.findUnique({
