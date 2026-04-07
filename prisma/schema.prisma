@@ -114,24 +114,41 @@ model LoyaltyPointTransaction {
   @@map("loyalty_point_transactions")
 }
 
+model ProductCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  products    Product[]
+
+  @@map("product_categories")
+}
+
 model Product {
-  id              String        @id @default(uuid())
+  id              String           @id @default(uuid())
   name            String
   description     String?
-  sku             String?       @unique
+  sku             String?          @unique
   price           Float
-  unit            String        @default("piece")
-  stockQty        Int           @default(0)
-  lowStockThreshold Int         @default(0)
+  unit            String           @default("piece")
+  stockQty        Int              @default(0)
+  lowStockThreshold Int            @default(0)
   imageUrl        String?
-  isAvailable     Boolean       @default(true)
-  requiresCooking Boolean       @default(false)
+  isAvailable     Boolean          @default(true)
+  requiresCooking Boolean          @default(false)
   cookCategory    CookCategory?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  categoryId      String?          @map("category_id")
+  category        ProductCategory? @relation(fields: [categoryId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   orderItems      OrderItem[]
   chefOrders      ChefOrder[]
   recipeItems     RecipeItem[]
+
+  @@index([categoryId])
 }
 
 model Chef {

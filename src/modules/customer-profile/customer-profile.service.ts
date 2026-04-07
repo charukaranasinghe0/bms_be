@@ -6,13 +6,9 @@ import type { UpdateLoyaltyConfigDto } from './dto/loyalty.dto';
 const DEFAULT_CONFIG = {
   currencyCode: 'LKR',
   currencySymbol: 'Rs',
-  pointsPerAmount: 1,
-  amountPerPoints: 100,
-  redeemThreshold: 100,
-  redeemDiscount: 20,
-  regularThreshold: 50,
-  loyalThreshold: 200,
-  vipThreshold: 500,
+  pointsPerCurrencyUnit: 1,
+  redemptionThreshold: 100,
+  redemptionValue: 20,
 };
 
 @Injectable()
@@ -22,41 +18,56 @@ export class CustomerProfileService {
   // ── Loyalty Config ─────────────────────────────────────────────────────────
 
   async getConfig() {
-    const config = await this.prisma.loyaltyConfig.findFirst();
-    return config ?? { id: 'default', ...DEFAULT_CONFIG, updatedAt: new Date(), updatedBy: null };
+    const config = await this.prisma.loyaltySettings.findFirst();
+    return config ?? { id: 'default', ...DEFAULT_CONFIG, updatedAt: new Date() };
   }
 
-  async updateConfig(dto: UpdateLoyaltyConfigDto, updatedBy: string) {
-    const existing = await this.prisma.loyaltyConfig.findFirst();
+  async updateConfig(dto: UpdateLoyaltyConfigDto, _updatedBy: string) {
+    const existing = await this.prisma.loyaltySettings.findFirst();
     if (existing) {
-      return this.prisma.loyaltyConfig.update({
+      return this.prisma.loyaltySettings.update({
         where: { id: existing.id },
-        data: { ...dto, updatedBy },
+        data: { ...dto },
       });
     }
-    return this.prisma.loyaltyConfig.create({
-      data: { ...DEFAULT_CONFIG, ...dto, updatedBy },
+    return this.prisma.loyaltySettings.create({
+      data: { ...DEFAULT_CONFIG, ...dto },
     });
   }
 
-  // ── Customer type resolution ───────────────────────────────────────────────
+  // ── Tier resolution ────────────────────────────────────────────────────────
 
-  resolveCustomerType(points: number, config: typeof DEFAULT_CONFIG): string {
-    if (points >= config.vipThreshold) return 'VIP';
-    if (points >= config.loyalThreshold) return 'LOYAL';
-    if (points >= config.regularThreshold) return 'REGULAR';
-    return 'NEW';
+  async resolveTierName(points: number): Promise<string> {
+    const tiers = await this.prisma.loyaltyTier.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    let tierName = '';
+    for (const tier of tiers) {
+      if (points >= tier.minPoints && (tier.maxPoints === null || points <= tier.maxPoints)) {
+        tierName = tier.name;
+        break;
+      }
+    }
+    return tierName;
   }
 
   // ── Points calculation ─────────────────────────────────────────────────────
 
-  calculatePointsEarned(orderTotal: number, config: typeof DEFAULT_CONFIG): number {
-    return Math.floor((orderTotal / config.amountPerPoints) * config.pointsPerAmount);
+  calculatePointsEarned(orderTotal: number, config: { pointsPerCurrencyUnit: number | { toNumber(): number } }): number {
+    const rate = typeof config.pointsPerCurrencyUnit === 'object'
+      ? config.pointsPerCurrencyUnit.toNumber()
+      : config.pointsPerCurrencyUnit;
+    return Math.floor(orderTotal * rate);
   }
 
-  calculateLoyaltyDiscount(points: number, config: typeof DEFAULT_CONFIG): number {
-    const redemptions = Math.floor(points / config.redeemThreshold);
-    return redemptions * config.redeemDiscount;
+  calculateLoyaltyDiscount(points: number, config: { redemptionThreshold: number; redemptionValue: number | { toNumber(): number } }): number {
+    const value = typeof config.redemptionValue === 'object'
+      ? config.redemptionValue.toNumber()
+      : config.redemptionValue;
+    const redemptions = Math.floor(points / config.redemptionThreshold);
+    return redemptions * value;
   }
 
   // ── Award points after order ───────────────────────────────────────────────
@@ -69,12 +80,17 @@ export class CustomerProfileService {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) return;
 
-    const newPoints = customer.loyaltyPoints + earned;
-    const newType = this.resolveCustomerType(newPoints, config as typeof DEFAULT_CONFIG);
+    const newCurrentPoints = customer.currentPoints + earned;
+    const newLifetimePoints = customer.lifetimePoints + earned;
+    const newTierName = await this.resolveTierName(newLifetimePoints);
 
     await this.prisma.customer.update({
       where: { id: customerId },
-      data: { loyaltyPoints: newPoints, customerType: newType },
+      data: { currentPoints: newCurrentPoints, lifetimePoints: newLifetimePoints, tierName: newTierName },
+    });
+
+    await this.prisma.loyaltyPointTransaction.create({
+      data: { customerId, type: 'EARNED', points: earned },
     });
   }
 
@@ -85,17 +101,28 @@ export class CustomerProfileService {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    const redemptions = Math.floor(customer.loyaltyPoints / config.redeemThreshold);
+    const threshold = typeof (config as any).redemptionThreshold === 'object'
+      ? (config as any).redemptionThreshold.toNumber()
+      : (config as any).redemptionThreshold;
+    const value = typeof (config as any).redemptionValue === 'object'
+      ? (config as any).redemptionValue.toNumber()
+      : (config as any).redemptionValue;
+
+    const redemptions = Math.floor(customer.currentPoints / threshold);
     if (redemptions === 0) return { deducted: 0, discount: 0 };
 
-    const deducted = redemptions * config.redeemThreshold;
-    const discount = redemptions * config.redeemDiscount;
-    const newPoints = customer.loyaltyPoints - deducted;
-    const newType = this.resolveCustomerType(newPoints, config as typeof DEFAULT_CONFIG);
+    const deducted = redemptions * threshold;
+    const discount = redemptions * value;
+    const newCurrentPoints = customer.currentPoints - deducted;
+    const newTierName = await this.resolveTierName(customer.lifetimePoints);
 
     await this.prisma.customer.update({
       where: { id: customerId },
-      data: { loyaltyPoints: newPoints, customerType: newType },
+      data: { currentPoints: newCurrentPoints, tierName: newTierName },
+    });
+
+    await this.prisma.loyaltyPointTransaction.create({
+      data: { customerId, type: 'REDEEMED', points: -deducted },
     });
 
     return { deducted, discount };
@@ -104,16 +131,20 @@ export class CustomerProfileService {
   // ── Manual points adjustment (admin) ──────────────────────────────────────
 
   async adjustPoints(customerId: string, points: number) {
-    const config = await this.getConfig();
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    const newPoints = Math.max(0, customer.loyaltyPoints + points);
-    const newType = this.resolveCustomerType(newPoints, config as typeof DEFAULT_CONFIG);
+    const newCurrentPoints = Math.max(0, customer.currentPoints + points);
+    const newLifetimePoints = points > 0 ? customer.lifetimePoints + points : customer.lifetimePoints;
+    const newTierName = await this.resolveTierName(newLifetimePoints);
+
+    await this.prisma.loyaltyPointTransaction.create({
+      data: { customerId, type: 'ADJUSTED', points },
+    });
 
     return this.prisma.customer.update({
       where: { id: customerId },
-      data: { loyaltyPoints: newPoints, customerType: newType },
+      data: { currentPoints: newCurrentPoints, lifetimePoints: newLifetimePoints, tierName: newTierName },
     });
   }
 
@@ -141,11 +172,11 @@ export class CustomerProfileService {
     if (!customer) throw new NotFoundException('Customer not found');
 
     const loyaltyDiscount = this.calculateLoyaltyDiscount(
-      customer.loyaltyPoints,
+      customer.currentPoints,
       config as typeof DEFAULT_CONFIG,
     );
 
-    const totalSpent = customer.orders.reduce((s, o) => s + o.total, 0);
+    const totalSpent = customer.orders.reduce((s: number, o: { total: number }) => s + o.total, 0);
 
     return {
       ...customer,
@@ -173,7 +204,7 @@ export class CustomerProfileService {
     if (!customer) return { exists: false };
 
     const loyaltyDiscount = this.calculateLoyaltyDiscount(
-      customer.loyaltyPoints,
+      customer.currentPoints,
       config as typeof DEFAULT_CONFIG,
     );
 
@@ -184,8 +215,9 @@ export class CustomerProfileService {
         name: customer.name,
         phone: customer.phone,
         email: customer.email,
-        loyaltyPoints: customer.loyaltyPoints,
-        customerType: customer.customerType,
+        currentPoints: customer.currentPoints,
+        lifetimePoints: customer.lifetimePoints,
+        tierName: customer.tierName,
         loyaltyDiscount,
         createdAt: customer.createdAt,
       },

@@ -1,24 +1,64 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import type { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
+
+const PRODUCT_INCLUDE = { category: { select: { id: true, name: true } } } as const;
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
-    return this.prisma.product.findMany({ orderBy: { createdAt: 'asc' } });
+  // ── Categories ─────────────────────────────────────────────────────────────
+
+  async listCategories() {
+    return this.prisma.productCategory.findMany({ orderBy: { sortOrder: 'asc' } });
   }
 
-  async listAvailable() {
+  async createCategory(dto: CreateCategoryDto) {
+    const existing = await this.prisma.productCategory.findUnique({ where: { name: dto.name } });
+    if (existing) throw new ConflictException(`Category "${dto.name}" already exists`);
+    return this.prisma.productCategory.create({ data: dto });
+  }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto) {
+    const cat = await this.prisma.productCategory.findUnique({ where: { id } });
+    if (!cat) throw new NotFoundException('Category not found');
+    if (dto.name && dto.name !== cat.name) {
+      const conflict = await this.prisma.productCategory.findUnique({ where: { name: dto.name } });
+      if (conflict) throw new ConflictException(`Category "${dto.name}" already exists`);
+    }
+    return this.prisma.productCategory.update({ where: { id }, data: dto });
+  }
+
+  async removeCategory(id: string) {
+    const cat = await this.prisma.productCategory.findUnique({ where: { id } });
+    if (!cat) throw new NotFoundException('Category not found');
+    // Unlink products before deleting
+    await this.prisma.product.updateMany({ where: { categoryId: id }, data: { categoryId: null } });
+    await this.prisma.productCategory.delete({ where: { id } });
+  }
+
+  // ── Products ───────────────────────────────────────────────────────────────
+
+  async list(categoryId?: string) {
     return this.prisma.product.findMany({
-      where: { isAvailable: true },
+      where: categoryId ? { categoryId } : undefined,
+      include: PRODUCT_INCLUDE,
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async listAvailable(categoryId?: string) {
+    return this.prisma.product.findMany({
+      where: { isAvailable: true, ...(categoryId ? { categoryId } : {}) },
+      include: PRODUCT_INCLUDE,
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async getById(id: string) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
+    const product = await this.prisma.product.findUnique({ where: { id }, include: PRODUCT_INCLUDE });
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }
