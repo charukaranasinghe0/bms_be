@@ -45,10 +45,10 @@ export class CustomerService {
   async createCustomer(dto: CreateCustomerDto) {
     const existing = await this.prisma.customer.findUnique({ where: { phone: dto.phone } });
     if (existing) throw new ConflictException('Phone number already registered');
-    // Assign the lowest tier by default
     const tiers = await this.tierEngine.getActiveTiers();
     const lowestTier = tiers[0]?.name ?? '';
-    const c = await this.prisma.customer.create({ data: { ...dto, tierName: lowestTier } });
+    const name = dto.name?.trim() || dto.phone; // fall back to phone if no name provided
+    const c = await this.prisma.customer.create({ data: { ...dto, name, tierName: lowestTier } });
     return this.mapCustomer(c);
   }
 
