@@ -13,6 +13,7 @@ import {
 import { IsInt } from 'class-validator';
 import { ProductsService } from './products.service';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -31,6 +32,35 @@ function ok<T>(data: T, message?: string) {
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  // ── Categories ─────────────────────────────────────────────────────────────
+
+  @Get('categories')
+  @Roles('CASHIER', 'ADMIN')
+  async listCategories() {
+    return ok(await this.productsService.listCategories());
+  }
+
+  @Post('categories')
+  @Roles('ADMIN')
+  async createCategory(@Body() body: CreateCategoryDto) {
+    return ok(await this.productsService.createCategory(body), 'Category created');
+  }
+
+  @Patch('categories/:id')
+  @Roles('ADMIN')
+  async updateCategory(@Param('id') id: string, @Body() body: UpdateCategoryDto) {
+    return ok(await this.productsService.updateCategory(id, body), 'Category updated');
+  }
+
+  @Delete('categories/:id')
+  @Roles('ADMIN')
+  @HttpCode(204)
+  async removeCategory(@Param('id') id: string) {
+    await this.productsService.removeCategory(id);
+  }
+
+  // ── Products ───────────────────────────────────────────────────────────────
+
   // GET /api/products/low-stock — must be before :id route
   @Get('low-stock')
   @Roles('CASHIER', 'ADMIN')
@@ -38,14 +68,14 @@ export class ProductsController {
     return ok(await this.productsService.getLowStock());
   }
 
-  // GET /api/products?available=true
+  // GET /api/products?available=true&categoryId=xxx
   @Get()
   @Roles('CASHIER', 'ADMIN')
-  async list(@Query('available') available?: string) {
+  async list(@Query('available') available?: string, @Query('categoryId') categoryId?: string) {
     const products =
       available === 'true'
-        ? await this.productsService.listAvailable()
-        : await this.productsService.list();
+        ? await this.productsService.listAvailable(categoryId)
+        : await this.productsService.list(categoryId);
     return ok(products);
   }
 

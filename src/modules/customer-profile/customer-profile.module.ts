@@ -9,7 +9,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [CustomerProfileController, TierEngineController],
-  providers: [LoyaltyService, TierEngineService, CustomerProfileService],
-  exports: [LoyaltyService, TierEngineService, CustomerProfileService],
+  providers: [CustomerProfileService, LoyaltyService, TierEngineService],
+  exports: [CustomerProfileService, LoyaltyService, TierEngineService],
 })
 export class CustomerProfileModule {}

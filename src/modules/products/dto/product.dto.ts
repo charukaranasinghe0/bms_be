@@ -52,6 +52,10 @@ export class CreateProductDto {
   @IsEnum(CookCategory)
   @IsOptional()
   cookCategory?: CookCategory | null;
+
+  @IsString()
+  @IsOptional()
+  categoryId?: string | null;
 }
 
 export class UpdateProductDto {
@@ -99,4 +103,8 @@ export class UpdateProductDto {
   @IsEnum(CookCategory)
   @IsOptional()
   cookCategory?: CookCategory | null;
+
+  @IsString()
+  @IsOptional()
+  categoryId?: string | null;
 }
