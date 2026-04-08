@@ -84,7 +84,11 @@ export class ProductsService {
         stockQty: input.stockQty ?? 0,
         lowStockThreshold: input.lowStockThreshold ?? 0,
         isAvailable: input.isAvailable ?? true,
+        requiresCooking: input.requiresCooking ?? false,
+        cookCategory: input.cookCategory ?? null,
+        categoryId: input.categoryId ?? null,
       },
+      include: PRODUCT_INCLUDE,
     });
   }
 

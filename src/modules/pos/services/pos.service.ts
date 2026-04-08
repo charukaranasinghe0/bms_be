@@ -290,9 +290,14 @@ export class PosService {
     });
 
     // 8. Award loyalty points on the amount actually paid (after all discounts)
-    void this.loyaltyService.addPoints(dto.customerId, total, order.id).catch(() => {
+    void this.loyaltyService.addPoints(dto.customerId, Math.max(0, total), order.id).catch(() => {
       // Non-blocking — points failure should not fail the order
     });
+
+    // 8a. Redeem loyalty points if a loyalty discount was applied
+    if (loyaltyDiscountAmount > 0) {
+      void this.loyaltyService.redeemPoints(dto.customerId, order.id).catch(() => {});
+    }
 
     // Create ChefOrder entries for items that have a chef assigned
     const chefOrderItems = order.items.filter(
