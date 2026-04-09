@@ -73,6 +73,7 @@ export class PosService {
       isAvailable: p.isAvailable,
       requiresCooking: p.requiresCooking,
       cookCategory: p.cookCategory ?? null,
+      categoryId: p.categoryId ?? null,
     }));
   }
 
