@@ -38,4 +38,5 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 4000
 
 # Prisma 6: migrate deploy reads DATABASE_URL directly from environment
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# resolve any previously failed migrations, then deploy and start
+CMD ["sh", "-c", "npx prisma migrate resolve --rolled-back 20260407142854_restore_cookcategory_on_product 2>/dev/null || true && npx prisma migrate deploy && node dist/main.js"]
