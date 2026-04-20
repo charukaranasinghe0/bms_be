@@ -5,7 +5,6 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY prisma ./prisma/
-COPY prisma.config.ts ./
 
 # Install all deps (including devDeps needed for build)
 RUN npm ci
@@ -26,13 +25,11 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 COPY prisma ./prisma/
-COPY prisma.config.ts ./
 
-# Install ALL deps so prisma.config.ts can be executed at runtime
-# (Prisma 7 requires its full dep tree to load prisma.config.ts)
-RUN npm ci
+# Install production deps only
+RUN npm ci --omit=dev
 
-# Generate Prisma client
+# Generate Prisma client in production image
 RUN npx prisma generate
 
 # Copy compiled output
@@ -40,5 +37,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000
 
-# Run migrations then start the server
+# Prisma 6: migrate deploy reads DATABASE_URL directly from environment
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
