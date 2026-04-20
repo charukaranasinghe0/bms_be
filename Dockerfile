@@ -39,5 +39,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 4000
 
-# Debug: print env vars present (without values), then migrate and start
-CMD ["sh", "-c", "echo '=== ENV KEYS ===' && env | cut -d= -f1 | sort && echo '=== DATABASE_URL set? ===' && ([ -n \"$DATABASE_URL\" ] && echo 'YES' || echo 'NO - NOT SET') && npx prisma migrate deploy && node dist/main.js"]
+# Run migrations then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
