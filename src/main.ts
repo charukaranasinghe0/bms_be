@@ -12,16 +12,26 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.use(cookieParser());
-  app.use(helmet());
-  app.use(morgan('dev'));
-
+  // CORS must be enabled BEFORE helmet and other middleware
   app.enableCors({
-    origin: true, // reflect request origin — allows all origins
+    origin: true, // reflect all origins — lock down after confirming it works
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
-  // Match Express: /health is NOT under /api, but other routes are
+  app.use(cookieParser());
+
+  // Helmet with relaxed settings to not block CORS preflight
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
+
+  app.use(morgan('dev'));
+
+  // /health is NOT under /api prefix
   app.setGlobalPrefix('api', {
     exclude: ['health'],
   });
