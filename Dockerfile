@@ -5,6 +5,7 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # Install all deps (including devDeps needed for build)
 RUN npm ci
@@ -25,6 +26,7 @@ ENV NODE_ENV=production
 
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # Install production deps only
 RUN npm ci --omit=dev
