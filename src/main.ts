@@ -31,6 +31,7 @@ async function bootstrap() {
 
   app.use(morgan('dev'));
 
+
   // /health is NOT under /api prefix
   app.setGlobalPrefix('api', {
     exclude: ['health'],
@@ -46,7 +47,8 @@ async function bootstrap() {
   }));
 
   const port = configService.get<number>('PORT') ?? 4000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on port ${port}`);
 }
 
 bootstrap();
