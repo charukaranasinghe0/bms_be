@@ -31,6 +31,12 @@ COPY prisma.config.ts ./
 # Install production deps only
 RUN npm ci --omit=dev
 
+# Prisma 7 requires these extra modules to execute prisma.config.ts at runtime
+# (known issue: https://github.com/prisma/prisma/discussions/28759)
+COPY --from=builder /app/node_modules/effect ./node_modules/effect
+COPY --from=builder /app/node_modules/fast-check ./node_modules/fast-check
+COPY --from=builder /app/node_modules/pure-rand ./node_modules/pure-rand
+
 # Generate Prisma client in production image
 RUN npx prisma generate
 
