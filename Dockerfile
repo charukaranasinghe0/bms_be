@@ -35,7 +35,7 @@ RUN npx prisma generate
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 4000
+EXPOSE 8080
 
 # Prisma 6: migrate deploy reads DATABASE_URL directly from environment
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
